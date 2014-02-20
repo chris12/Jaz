@@ -40,7 +40,7 @@ namespace JazInterpreter
                 {
                     try
                     {
-                        line = line.TrimStart(" ".ToArray());
+                        line = line.TrimStart();
                         firstSpace = line.IndexOf(" ");
                         command = line.Substring(0, firstSpace);
                         value = line.Substring(firstSpace).Trim();
