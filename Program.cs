@@ -10,10 +10,12 @@ namespace JazInterpreter
     class Program
     {
         public static List<Node> jazInput = new List<Node>();
-        public static Dictionary<string,int> mainVariables = new Dictionary<string,int>();
+        public static Dictionary<string, int> mainVariables = new Dictionary<string, int>();
         public static Stack<int> locationBeforeCall = new Stack<int>();
         public static Stack<object> mainStack = new Stack<object>();
-        
+        public static List<Dictionary<string, int>> varTables = new List<Dictionary<string, int>>();
+        public static int currentTable = 0;
+
         static void Main(string[] args)
         {
             string fileName;
@@ -29,8 +31,8 @@ namespace JazInterpreter
             string line, command, value;
             int firstSpace;
             //Stack<object> mainStack = new Stack<object>();
-            
-            
+
+
             //Read in the .jaz file and build a list to work with
             using (StreamReader reader = new StreamReader(fileName))
             {
@@ -52,17 +54,17 @@ namespace JazInterpreter
                     jazInput.Add(tempNode);
                 }
             }
-
+            varTables.Add(new Dictionary<string, int>());
 
             for (int i = 0; i < jazInput.Count(); i++)
             {
                 Node readNode = jazInput[i];
-                i = processCommand(readNode, i, ref mainVariables);
+                i = processCommand(readNode, i, varTables[0]);
             }
             Console.ReadLine();
         }
 
-        private static int processCommand(Node readNode, int currentPosition ,ref Dictionary<string, int> currentDict)
+        private static int processCommand(Node readNode, int currentPosition, Dictionary<string, int> currentDict)
         {
             int first, second;
 
@@ -74,7 +76,7 @@ namespace JazInterpreter
                 case "goto":
                     return getLabel(readNode);
                 case "lvalue":
-                    if(!currentDict.ContainsKey(readNode.value))
+                    if (!currentDict.ContainsKey(readNode.value))
                     {
                         currentDict.Add(readNode.value, 0);
                     }
@@ -88,7 +90,7 @@ namespace JazInterpreter
                 case "push":
                     mainStack.Push(readNode.value);
                     return currentPosition;
-                case "pop" :
+                case "pop":
                     mainStack.Pop();
                     return currentPosition;
                 case "copy":
@@ -120,7 +122,7 @@ namespace JazInterpreter
                 case "gotrue":
                     if (!mainStack.Peek().Equals(0))
                     {
-                      return getLabel(readNode);
+                        return getLabel(readNode);
                     }
                     return currentPosition;
                 case "+":
@@ -143,7 +145,7 @@ namespace JazInterpreter
                     second = int.Parse(mainStack.Pop().ToString());
                     mainStack.Push(second / first);
                     return currentPosition;
-                case "div" :
+                case "div":
                     first = int.Parse(mainStack.Pop().ToString());
                     second = int.Parse(mainStack.Pop().ToString());
                     mainStack.Push(second % first);
@@ -155,7 +157,7 @@ namespace JazInterpreter
                     return currentPosition;
                 case "!":
                     string binary = (mainStack.Pop().ToString());
-                    
+
                     char[] binAr = binary.ToCharArray();
                     for (int b = 0; b < binAr.Length; b++)
                     {
@@ -202,8 +204,11 @@ namespace JazInterpreter
                     second = int.Parse(mainStack.Pop().ToString());
                     mainStack.Push((second == first) ? 1 : 0);
                     return currentPosition;
-                case"begin":
-                    return begin(currentPosition,ref currentDict);
+                case "begin":
+                    int h =  begin(currentPosition);
+                    varTables.RemoveAt(currentTable);
+                    currentTable--;
+                    return h;
                 default:
                     return currentPosition;
             }
@@ -223,11 +228,12 @@ namespace JazInterpreter
             return -1;
         }
 
-        public static int begin(int position, ref Dictionary<string, int> passedDict)
+        public static int begin(int position)
         {
             bool beforeCall = true;
             bool beforeReturn = true;
-            Dictionary<string, int> functionDict = new Dictionary<string, int>();
+            varTables.Add(new Dictionary<string,int>());
+            currentTable++;
 
             for (int i = position + 1; i < jazInput.Count(); i++)
             {
@@ -247,10 +253,10 @@ namespace JazInterpreter
                         continue;
                 }
                 if (beforeCall && readNode.command.Equals("rvalue"))
-                    processCommand(readNode, position,ref passedDict);
+                    i = processCommand(readNode, i, varTables[currentTable -1]);
                 else if (!beforeCall && !beforeReturn && (readNode.command.Equals("lvalue") || readNode.command.Equals(":=")))
-                    processCommand(readNode, position,ref passedDict);
-                else processCommand(readNode, position, ref functionDict);
+                    i = processCommand(readNode, i, varTables[currentTable-1]);
+                else i = processCommand(readNode, i, varTables[currentTable]);
             }
 
             return position;
