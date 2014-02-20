@@ -15,10 +15,11 @@ namespace JazInterpreter
         public static Stack<object> mainStack = new Stack<object>();
         public static List<Dictionary<string, int>> varTables = new List<Dictionary<string, int>>();
         public static int currentTable = 0;
+        public static StringBuilder sb = new StringBuilder();
+        public static string fileName;
 
         static void Main(string[] args)
         {
-            string fileName;
             if (args.Length > 1)
             {
                 fileName = args[1].ToString();
@@ -61,7 +62,7 @@ namespace JazInterpreter
                 Node readNode = jazInput[i];
                 i = processCommand(readNode, i, varTables[0]);
             }
-            Console.ReadLine();
+            
         }
 
         private static int processCommand(Node readNode, int currentPosition, Dictionary<string, int> currentDict)
@@ -72,6 +73,8 @@ namespace JazInterpreter
             {
                 case "show":
                     Console.WriteLine(readNode.value);
+                    sb.Append(readNode.value);
+                    sb.Append(Environment.NewLine);
                     return currentPosition;
                 case "goto":
                     return getLabel(readNode);
@@ -103,14 +106,18 @@ namespace JazInterpreter
                     return currentPosition;
                 case "print":
                     Console.WriteLine(mainStack.Peek());
+                    sb.Append(mainStack.Peek());
+                    sb.Append(Environment.NewLine);
                     return currentPosition;
                 case "call":
                     if (getLabel(readNode) > 0)
                         return getLabel(readNode);
                     return currentPosition;
                 case "halt":
-                    Console.WriteLine("Halt reached press any key to end");
-                    Console.ReadLine();
+                    using (StreamWriter sw = new StreamWriter(fileName.Substring(0,fileName.LastIndexOf('.')) + ".out"))
+                    {
+                        sw.Write(sb);
+                    }
                     Environment.Exit(0);
                     return currentPosition;
                 case "gofalse":
