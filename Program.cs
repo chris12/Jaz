@@ -18,7 +18,7 @@ namespace JazInterpreter
         public static StringBuilder sb = new StringBuilder();
         public static string fileName;
 
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             if (args.Length > 1)
             {
@@ -26,34 +26,47 @@ namespace JazInterpreter
             }
             else
             {
-                Console.WriteLine("Enter a file name");
+                Console.Write("Enter a file name: ");
                 fileName = Console.ReadLine();
+                Console.WriteLine("");
             }
             string line, command, value;
             int firstSpace;
             //Stack<object> mainStack = new Stack<object>();
 
-
-            //Read in the .jaz file and build a list to work with
-            using (StreamReader reader = new StreamReader(fileName))
-            {
-                while ((line = reader.ReadLine()) != null)
+            try 
+            { 
+                //Read in the .jaz file and build a list to work with
+                using (StreamReader reader = new StreamReader(fileName))
                 {
-                    try
+                    while ((line = reader.ReadLine()) != null)
                     {
-                        line = line.TrimStart();
-                        firstSpace = line.IndexOf(" ");
-                        command = line.Substring(0, firstSpace);
-                        value = line.Substring(firstSpace).Trim();
+                        try
+                        {
+                            line = line.TrimStart();
+                            firstSpace = line.IndexOf(" ");
+                            command = line.Substring(0, firstSpace);
+                            value = line.Substring(firstSpace).Trim();
+                        }
+                        catch (Exception)
+                        {
+                            command = line;
+                            value = "";
+                        }
+                        Node tempNode = new Node(command, value);
+                        jazInput.Add(tempNode);
                     }
-                    catch (Exception)
-                    {
-                        command = line;
-                        value = "";
-                    }
-                    Node tempNode = new Node(command, value);
-                    jazInput.Add(tempNode);
                 }
+            }
+            catch(FileNotFoundException e)
+            {
+                Console.WriteLine(e.FileName + " not found. Exiting...");
+                return 1;
+            }
+            catch(Exception)
+            {
+                Console.WriteLine("Error reading file. Exiting...");
+                return 2;
             }
             varTables.Add(new Dictionary<string, int>());
 
@@ -62,7 +75,9 @@ namespace JazInterpreter
                 Node readNode = jazInput[i];
                 i = processCommand(readNode, i, varTables[0]);
             }
-            
+
+            return 0;
+
         }
 
         private static int processCommand(Node readNode, int currentPosition, Dictionary<string, int> currentDict)
@@ -114,7 +129,7 @@ namespace JazInterpreter
                         return getLabel(readNode);
                     return currentPosition;
                 case "halt":
-                    using (StreamWriter sw = new StreamWriter(fileName.Substring(0,fileName.LastIndexOf('.')) + ".out"))
+                    using (StreamWriter sw = new StreamWriter(fileName.Substring(0, fileName.LastIndexOf('.')) + ".out"))
                     {
                         sw.Write(sb);
                     }
@@ -212,7 +227,7 @@ namespace JazInterpreter
                     mainStack.Push((second == first) ? 1 : 0);
                     return currentPosition;
                 case "begin":
-                    int h =  begin(currentPosition);
+                    int h = begin(currentPosition);
                     varTables.RemoveAt(currentTable);
                     currentTable--;
                     return h;
@@ -239,7 +254,7 @@ namespace JazInterpreter
         {
             bool beforeCall = true;
             bool beforeReturn = true;
-            varTables.Add(new Dictionary<string,int>());
+            varTables.Add(new Dictionary<string, int>());
             currentTable++;
 
             for (int i = position + 1; i < jazInput.Count(); i++)
@@ -260,9 +275,9 @@ namespace JazInterpreter
                         continue;
                 }
                 if (beforeCall && readNode.command.Equals("rvalue"))
-                    i = processCommand(readNode, i, varTables[currentTable -1]);
+                    i = processCommand(readNode, i, varTables[currentTable - 1]);
                 else if (!beforeCall && !beforeReturn && (readNode.command.Equals("lvalue") || readNode.command.Equals(":=")))
-                    i = processCommand(readNode, i, varTables[currentTable-1]);
+                    i = processCommand(readNode, i, varTables[currentTable - 1]);
                 else i = processCommand(readNode, i, varTables[currentTable]);
             }
 
